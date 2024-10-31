@@ -1,0 +1,22 @@
+{
+  "name": "jsminesweeper",
+  "version": "0.1.0",
+  "description": "Service for generating safe (no-guess) minesweeper boards",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sovamorco/JSMinesweeper.git"
+  },
+  "author": "David N Hill, Sovamorco",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Sovamorco/JSMinesweeper/issues"
+  },
+  "homepage": "https://github.com/Sovamorco/JSMinesweeper#readme",
+  "dependencies": {
+    "express": "^4.21.1"
+  }
+}
