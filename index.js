@@ -11,15 +11,20 @@ if (process.env.CONFIG_PATH !== undefined) {
 
 const config = require(path.resolve(__dirname, CONFIG_PATH))
 
-const server = express()
+const shutdownTimeout = 30 * 1000
 
-server.use(express.json())
+const app = express()
+const server = app.listen(config.port, function () {
+    console.log(`HTTP server listening on port ${config.port}`)
+})
 
-server.get("/ping", async (_, res) => {
+app.use(express.json())
+
+app.get("/ping", async (_, res) => {
     await res.send("pong")
 })
 
-server.post("/generate", async (req, res) => {
+app.post("/generate", async (req, res) => {
     try {
         const game = await createNoGuessGame({
             h: req.body.h,
@@ -29,8 +34,8 @@ server.post("/generate", async (req, res) => {
             firstClickX: req.body.firstClickX,
             maxLoops: req.body.maxLoops,
         })
-		
-		res.send(convertGame(game))
+
+        res.send(convertGame(game))
     } catch (err) {
         console.error(err)
 
@@ -39,28 +44,40 @@ server.post("/generate", async (req, res) => {
 })
 
 function convertGame(game) {
-	const res = []
+    const res = []
 
-	for (let y = 0; y < game.height; y++) {
-		res.push([])
-		
-		for (let x = 0; x < game.width; x++) {
-			let v = false
-			if (game.getTile(yx_to_index(y, x, game.width)).isBomb()) {
-				v = true
-			}
+    for (let y = 0; y < game.height; y++) {
+        res.push([])
 
-			res[y].push(v)
-		}
-	}
+        for (let x = 0; x < game.width; x++) {
+            let v = false
+            if (game.getTile(yx_to_index(y, x, game.width)).isBomb()) {
+                v = true
+            }
 
-	return JSON.stringify(res)
+            res[y].push(v)
+        }
+    }
+
+    return JSON.stringify(res)
 }
 
 function yx_to_index(y, x, width) {
     return y * width + x
 }
 
-http.createServer(server).listen(config.port, function () {
-    console.log(`HTTP server listening on port ${config.port}`)
-})
+process.on("SIGTERM", shutdown)
+process.on("SIGINT", shutdown)
+
+function shutdown() {
+    console.log("Shutting down")
+
+    server.close(function () {
+        console.log("Shut down")
+        process.exit(0)
+    })
+
+    setTimeout(() => {
+        process.exit(1)
+    }, shutdownTimeout)
+}
