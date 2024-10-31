@@ -1,21 +1,14 @@
-const http = require("http")
-const path = require("path")
 const express = require("express")
 
 const { createNoGuessGame } = require("./minesweeper/client/minesweeperGame")
 
-let CONFIG_PATH = "config.dev.json"
-if (process.env.CONFIG_PATH !== undefined) {
-    CONFIG_PATH = process.env.CONFIG_PATH
-}
-
-const config = require(path.resolve(__dirname, CONFIG_PATH))
+const port = 18847
 
 const shutdownTimeout = 30 * 1000
 
 const app = express()
-const server = app.listen(config.port, function () {
-    console.log(`HTTP server listening on port ${config.port}`)
+const server = app.listen(port, function () {
+    console.log(`HTTP server listening on port ${port}`)
 })
 
 app.use(express.json())
