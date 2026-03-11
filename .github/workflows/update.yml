@@ -3,44 +3,59 @@ name: Update
 on:
   push:
     branches:
-    - master
+      - master
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to registry
+        uses: docker/login-action@v3
+        with:
+          registry: registry.sovamor.co
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Save image name
+        run: echo "image=registry.sovamor.co/minesweeper" >> $GITHUB_ENV
+
+      - name: Save image tag
+        run: echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Build image
+        run: docker build -t ${{ env.image }}:${{ env.tag }} .
+
+      - name: Push image
+        run: docker push --all-tags "${{ env.image }}"
+
+    outputs:
+      image: ${{ env.image }}
+      tag: ${{ env.tag }}
+
   update:
+    needs:
+      - build
     runs-on:
-    - self-hosted
-    - updater
-      # unique label for runner created specifically for this job
-      # "update" here is the name of the job
-    - ${{github.run_id}}-${{github.run_attempt}}-update
+      - self-hosted
+      - updater
+        # unique label for runner created specifically for this job
+        # "update" here is the name of the job
+      - ${{github.run_id}}-${{github.run_attempt}}-update
 
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Save job name
+        run: echo "job=minesweeper" >> $GITHUB_ENV
 
-    - name: Save image name
-      run: echo "image=minesweeper" >> $GITHUB_ENV
-
-    - name: Save image tag
-      run: echo "tag=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-    - name: Build image
-      run: docker build -t ${{ env.image }}:${{ env.tag }} .
-      env:
-        # work around https://github.com/github/vscode-github-actions/issues/222.
-        image: ${{ env.image }}
-        tag: ${{ env.tag }}
-
-    - name: Run update
-      run: >
-        docker run --rm
-        --name "nomad-update-${{ env.image }}-${{ env.tag }}-${{ github.run_id }}-${{ github.run_attempt }}"
-        --add-host "server.global.nomad=host-gateway"
-        --env NOMAD_ADDR="https://server.global.nomad:4646"
-        --env NOMAD_TOKEN="${{ secrets.NOMAD_TOKEN }}"
-        nomad-update:latest ${{ env.image }} ${{ env.image }} ${{ env.tag }}
-      env:
-        # work around https://github.com/github/vscode-github-actions/issues/222.
-        image: ${{ env.image }}
-        tag: ${{ env.tag }}
+      - name: Run update
+        run: >
+          docker run --rm
+          --name "nomad-update-${{ env.job }}-${{ env.tag }}-${{ github.run_id }}-${{ github.run_attempt }}"
+          --add-host "server.global.nomad=host-gateway"
+          --env NOMAD_ADDR="https://server.global.nomad:4646"
+          --env NOMAD_TOKEN="${{ secrets.NOMAD_TOKEN }}"
+          nomad-update:latest ${{ env.job }} ${{ env.image }} ${{ env.tag }}
+        env:
+          image: ${{ needs.build.outputs.image }}
+          tag: ${{ needs.build.outputs.tag }}
